@@ -1,3 +1,5 @@
+using Application.Interfaces;
+using Infrastructure.Interfaces;
 using Npgsql;
 
  
@@ -13,6 +15,10 @@ builder.Services.AddControllers();
 builder.Services.AddTransient<NpgsqlConnection>(
     _ => new NpgsqlConnection(configuration.GetConnectionString("PostgradeSQL"))
 );
+
+builder.Services.AddTransient<IAuthenticationService, AuthenticationService>();
+builder.Services.AddTransient<IAuthorizationService, AuthorizationService>();
+builder.Services.AddSingleton<IVerificationService>(new VerificationService());
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
