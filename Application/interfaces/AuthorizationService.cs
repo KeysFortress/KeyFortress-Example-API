@@ -20,33 +20,8 @@ public class AuthorizationService : IAuthorizationService
         _issuer = configuration["jwt-issuer"] ?? string.Empty;
     }
     
-    public string IssueHandshakeToken(Guid id)
-    {
-        
-        var claims = new List<Claim>
-        {
-            new("uuid", id.ToString()),
-            new(ClaimTypes.Role, "Mfa")
-        };
-
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtKey));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var expires = DateTime.UtcNow.AddHours(1);
-        var token = new JwtSecurityToken(
-            expires: expires,
-            signingCredentials: credentials,
-            claims: claims,
-            issuer: _issuer,
-            audience: _issuer,
-            notBefore: null
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-        
-    }
-
-    public string IssueChildToken(Guid id)
+   
+    public string IssueToken(Guid id)
     {
         var claims = new List<Claim>
         {
@@ -72,85 +47,5 @@ public class AuthorizationService : IAuthorizationService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public string IssueAuthenticationToken(Guid id, string role)
-    {   
-        var claims = new List<Claim>
-        {
-            new("uuid", id.ToString()),
-            new(ClaimTypes.Role, role)
-        };
-
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtKey));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var expires = DateTime.UtcNow.AddDays(30);
-        var token = new JwtSecurityToken(
-            expires: expires,
-            signingCredentials: credentials,
-            claims: claims,
-            issuer: _issuer,
-            audience: _issuer,
-            notBefore: null
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
     
-    public  ClaimsPrincipal? ValidateAppleIdentityToken(string identityToken)
-    {
-        try
-        {
-            var token = ReadToken(identityToken);
-            if (token == null) return null;
-            var tokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = GetApplePublicKey(token.Header.Kid),
-                ValidateIssuer = true,
-                ValidIssuer = "https://appleid.apple.com",
-                ValidateAudience = true,
-                ValidAudience = "com.AirzenKidsWifi.app",
-                RequireExpirationTime = true,
-                ValidateLifetime = true,
-            };
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var principal = tokenHandler.ValidateToken(identityToken, tokenValidationParameters, out _);
-            
-            return principal;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            return null;
-        }
-    }
-    
-    private JwtSecurityToken? ReadToken(string token)
-    {
-        var handler = new JwtSecurityTokenHandler();
-
-        if (handler.ReadToken(token) is not JwtSecurityToken jsonToken) return null;
-        Console.WriteLine("Issuer: " + jsonToken.Issuer);
-        Console.WriteLine("Audience: " + jsonToken.Audiences.FirstOrDefault());
-        Console.WriteLine("Expiration Time: " + jsonToken.ValidTo);
-        Console.WriteLine("Issued At: " + jsonToken.ValidFrom);
-
-        Console.WriteLine("Subject: " + jsonToken.Subject);
-        Console.WriteLine("Email: " + jsonToken.Claims.FirstOrDefault(c => c.Type == "email")?.Value);
-
-        Console.WriteLine("\nDecoded Token:\n" + jsonToken);
-        return jsonToken;
-    }
-    
-    private static SecurityKey GetApplePublicKey(string keyId)
-    {
-        var jwksUrl = "https://appleid.apple.com/auth/keys";
-
-        using var httpClient = new HttpClient();
-        var json = httpClient.GetStringAsync(jwksUrl).Result;
-        var jwt = JsonConvert.DeserializeObject<JsonWebKeySet>(json);
-                
-        return jwt.Keys.FirstOrDefault(k => k.Kid == keyId);
-    }
 }

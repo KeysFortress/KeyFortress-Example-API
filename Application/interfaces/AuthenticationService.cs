@@ -24,16 +24,20 @@ public class AuthenticationService : IAuthenticationService
     public string GetMessage(string host, AuthenticationHandshake request)
     {
         var uniqueMessage = Guid.NewGuid().ToString();
+        var algorithm = new Ed25519();
+        var bytes = Convert.FromBase64String(request.PublicKey);
+
+        var publicKey = NSec.Cryptography.PublicKey.Import(algorithm, bytes, KeyBlobFormat.RawPublicKey);
+        byte[] byteMessage = Encoding.ASCII.GetBytes(uniqueMessage);
+        var response = algorithm.Sign(new Key(algorithm), byteMessage);
         var storedMessage = new StoredMessage
         {
-            Name = request.Name,
             Message = uniqueMessage,
             Ip = host,
-            Id = request.Id,
             ExpiresAt = DateTime.UtcNow.AddMinutes(10)
         };
         _storedMessages.Add(storedMessage);
-        return uniqueMessage;
+        return Convert.ToBase64String(response);
     }
 
     public bool VerifyMessage(AuthRequest request, string host)
@@ -49,28 +53,8 @@ public class AuthenticationService : IAuthenticationService
         var isSignatureValid = algorithm.Verify(publicKey, messageBytes, signatureBytes);
         _storedMessages.FirstOrDefault(x => x == last)!.Verified = true;
         _storedMessages.FirstOrDefault(x => x == last)!.PublicKey = request.PublicKey;
-        _storedMessages.FirstOrDefault(x => x == last)!.DeviceUuid = request.Uuid;
         
         return isSignatureValid;
     }
-
-    public int ApproveAccount(Guid account, Guid requestOwner)
-    {
-        
-        var entity = _storedMessages.FirstOrDefault(x => x.Id == account);
-        if (entity == null)  return -1;
-       
-        return entity.Verified  ? 2 : 1;
-    }
     
-    public StoredMessage? GetActiveAuthorizationData(string code)
-    {
-        var exists = _storedMessages.FirstOrDefault(x => x.Message == code);
-        return exists;
-    }
-
-    public List<StoredMessage> GetPending()
-    {
-        return _storedMessages.Where(x => !x.Verified).ToList();
-    }
 }

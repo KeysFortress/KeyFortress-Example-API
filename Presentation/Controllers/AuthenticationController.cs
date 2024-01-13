@@ -47,8 +47,7 @@ public class AuthenticationController : BaseApiController
             if (!isSignatureValid)
                 return BadRequest(new { VerificationStatus = "Signature is not valid." });
 
-            // _childService.DeviceExists(request.PublicKey);
-            var childToken = _authorizationService.IssueChildToken(Guid.Empty);
+            var childToken = _authorizationService.IssueToken(Guid.Empty);
             return Ok(new { Token = childToken, Expires = DateTime.UtcNow.AddHours(1) });
         }
         catch (Exception ex)
