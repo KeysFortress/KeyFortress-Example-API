@@ -2,6 +2,7 @@ using Api.Controllers;
 using Domain.Dtos;
 using Infrastructure.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using Org.BouncyCastle.Asn1.Ocsp;
 
 namespace API.Controllers;
@@ -59,5 +60,24 @@ public class AuthenticationController : BaseApiController
                 }
             );
         }
+    }
+
+    [HttpGet("qr-link/{email}")]
+    public IActionResult GetAuthenticationQrLink()
+    {
+        var host = Request.Host.ToString();
+        var res = JsonConvert.SerializeObject(
+            new
+            {
+                FinishChallenge = $"https://{host}/API/V1/Authentication/finish-handshake",
+                Initial = $"https://{host}/API/V1/Authentication/init-handshake",
+
+                ForUser = Guid.NewGuid().ToString(),
+            }
+        );
+        
+        return Ok(
+            res
+        );
     }
 }
